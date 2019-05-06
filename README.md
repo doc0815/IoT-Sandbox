@@ -8,6 +8,7 @@ A communications protocol is established between a device (sensor) and an agent.
 The agent adds the device's ID to the data record and forwards it to the MongoDB Stitch application. A json format with these attributes is used: senorID, sensorTimestamp (millseconds elapsed since 01.01.1970 midnight), temperature (degree celsius), humidity, pressure, lightlevel, co2, voc.
 
 next step 1: enrich redordings with spatial data (Mozilla Ichnaea API) from WiFi data recorded by sensor
+
 next step 2: implement 2nd sensor with cellular data transmission instead of WiFi
 
 ## MongoDB
