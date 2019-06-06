@@ -96,7 +96,6 @@ class SGP30{
         if (val == null) throw "I2C read error: " + _i2c.readerror();
         local co2eq_base = ((val[0] << 8) | val[1]);
         local tvoc_base = ((val[3] << 8) | val[4]);
-        //server.log(format("baseline: %d (CO2eq) / %d (TVOC)",co2eq_base,tvoc_base));
         return {"CO2eq_base" : co2eq_base, "TVOC_base" : tvoc_base};
     } 
 
@@ -158,11 +157,15 @@ class IndoorSensor{
         
         // Configure message manager for device/agent communication
         mm = MessageManager();
+        
+        //
+        // The acknowledge callback function is now message name specific.
+        //
         // Message Manager allows us to call a function when a message
         // has been delivered. We will use this to know when it is ok
         // to delete locally stored readings and disconnect
-        mm.onAck(readingsAckHandler.bindenv(this));
-
+        //mm.onAck(readingsAckHandler.bindenv(this));
+        
         initializeSensors();
         
         // We want to make sure we can always blinkUp a device when it is first
@@ -172,17 +175,16 @@ class IndoorSensor{
             _boot = false;
             server.disconnect();
         }.bindenv(this));
-
     }
-
+    
     function run() {
         
         // Take an async temp/humid reading
         tempSensor.read(function(result) {
+            
             // Set up the reading table with a timestamp
             local reading = { };
             reading.timestamp <- time();
-            //reading.date <- date();
             
             // Add temperature and humidity readings
             if ("temperature" in result) reading.temperature <- result.temperature;
@@ -216,67 +218,67 @@ class IndoorSensor{
         }.bindenv(this));
         
     }
-
+    
     function sendReadings() {
         // Connect device
         server.connect();
         
-        // Send readings to the agent
-        mm.send("readings", readings);
+        // Send sensor readings and wifi information to the agent
+        mm.send("readings", readings, {"onAck": readingsAckHandler.bindenv(this)});
+        //mm.send("wifi", imp.scanwifinetworks()); // disabled
+        // Note: when the readings message is acknowledged by the agent and
+        // the readingsAckHandler will be triggered
         
         // Update the next connection time varaible
         setNextConnectTime();
-
-        // When this message is acknowledged by the agent
-        // the readingsAckHandler will be triggered
     }
-
+    
     function readingsAckHandler(msg) {
-        // The agent received the readings
         // Clear readings we just sent
         readings = [];
-
         // Disconnect from server if we have not just booted up
         if (!_boot) server.disconnect();
     }
-
+    
     function timeToConnect() {
         // Return a boolean - if it is time to connect based on the current time
         return (time() >= nextConnectTime);
     }
-
+    
     function setNextConnectTime() {
         // Update the local nextConnectTime variable
         nextConnectTime = time() + REPORTING_INTERVAL_SEC;
     }
-
+    
     function initializeSensors() {
         // Configure i2c
         i2c.configure(CLOCK_SPEED_400_KHZ);
-
+        
         // Initialize sensor
         tempSensor = HTS221(i2c, tempHumidAddr);
         pressureSensor = LPS22HB(i2c, pressureAddr);
         co2Sensor = SGP30(i2c, co2Addr);
-
+        
         // Configure sensor to take readings
         tempSensor.setMode(HTS221_MODE.ONE_SHOT);
         pressureSensor.setMode(LPS22HB_MODE.ONE_SHOT);
         pressureSensor.softReset();
         
-        // calibrate co2 sensor
+        // Calibrate co2 sensor
         //server.log("serial number CO2 sensor:");
         //server.log(co2Sensor.getSerial());
-        // measureTest() will reset the baseline and requires a subsequent initAirQuality() call !!!
+        // measureTest() will reset the baseline and requires a subsequent 
+        // call of initAirQuality() !!!
         //server.log("CO2 sensor test measure:");
         //server.log(co2Sensor.measureTest());
         co2Sensor.initAirQuality();
-        local maxCalibrationTime = time() + 60; // wait max 60 seconds for calibration
+        local maxCalibrationTime = time() + 60; // wait max 60 sec for calibration
         local res = co2Sensor.getBaseline();
         do {
-            if ( (time()-maxCalibrationTime) > 0 ) throw "CO2 sensor calibration: maximum wait time exceeded";
+            if ( (time()-maxCalibrationTime) > 0 )
+                throw "CO2 sensor calibration: maximum wait time exceeded";
             co2Sensor.measureAirQuality();
-            imp.sleep(1); // wait 1 second
+            imp.sleep(1); // wait 1 sec
             res = co2Sensor.getBaseline();
         } while ( (res.CO2eq_base == 0) && (res.TVOC_base == 0) )
         
