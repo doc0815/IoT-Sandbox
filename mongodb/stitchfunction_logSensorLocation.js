@@ -5,9 +5,11 @@ exports = function (impData) {
   // transform the impData into an array of MongoDB documents
   sensorData = {
     sensorID:         impData.sensor,
-    sensorTimestamp:  impData.timestamp * 1000, // conversion from s to ms
+    // convert timestamp measured in seconds since 01/01/1970 into a date data type (timezone UTC)
+    sensorTimestamp:  new Date (impData.timestamp * 1000),
     accuracy:         impData.accuracy,
-    location:         impData.location
+    // convert to GeoJSON object
+    location:         {type: "Point", coordinates: [impData.location.lng, impData.location.lat]}
   };
 
   // insert the location data into MongoDB
