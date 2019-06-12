@@ -6,9 +6,9 @@ sandbox application for playing around with Electric Imp sensoric, the Mozilla L
 
 A communications protocol is established between a device (sensor) and an agent. The device samples sensor data (temperature, air pressure, humidity, etc.) with a regular frequency (controled by a parameter) and stores it internally together with the timestamp of recording. After a waiting time (also controlled by a parameter) it establishes a wifi connection and sends the recorded sensor data to the agent over the named channel *readings*. The device scans all available wifi networks in additions and sends these signal parameters also to the agent using the named channel *wifi*. Subsequently, the device disconnects and samples sensor data again until the next transmission cycle.
 
-The agent adds the device's ID to the sensor data records and forwards them to the MongoDB Stitch application. A json format with these attributes is used: senorID, sensorTimestamp (millseconds elapsed since 01.01.1970 midnight), temperature (degree celsius), humidity, pressure, lightlevel, co2, voc.
+The agent adds the device's ID to the sensor data records and forwards them to the MongoDB Stitch application. A json format with these attributes is used: senorID, sensorTimestamp (seconds elapsed since 01.01.1970 midnight), temperature (degree celsius), humidity, pressure, lightlevel, co2, voc.
 
-Furthermore, the agent requests the current location of the device based on the scanned wifi data the device provides. Therefore, a POST request is created and sent to MLS. The service's reply is enriched with the device ID and the timestamp the location reply is received. The agent also forwards this data to the MongoDB Stitch application using these attributes (json format): senorID, sensorTimestamp (millseconds elapsed since 01.01.1970 midnight), location (longitude and latitude), accuracy (meter).
+Furthermore, the agent requests the current location of the device based on the scanned wifi data the device provides. Therefore, a POST request is created and sent to MLS. The service's reply is enriched with the device ID and the timestamp the location reply is received. The agent also forwards this data to the MongoDB Stitch application using these attributes (json format): senorID, sensorTimestamp (seconds elapsed since 01.01.1970 midnight), location (longitude and latitude), accuracy (meter).
 
 next step: implement 2nd sensor with cellular data transmission instead of wifi
 
@@ -19,7 +19,7 @@ https://mozilla.github.io/ichnaea/api/geolocate.html#api-geolocate-latest
 
 ## MongoDB Stitch
 
-Two customized functions of the Stitch applications are used to insert sensor data into the MongoDB database. The function `logSensorReadings` receives an array of json documents and inserts them using the API call `insertMany()`. The collection in which the sensor readings are stored is `SensorData` in database `impExplorer`. `logSensorLocation` processes the sensor location data and writes it into the `testLocation` collection in database `impExplorer` using the API call `insertOne()`.
+Two customized functions of the Stitch applications are used to insert sensor data into the MongoDB database. The function `logSensorReadings` receives an array of json documents and inserts them using the API call `insertMany()`. The collection in which the sensor readings are stored is `SensorData` in database `impExplorer`. `logSensorLocation` processes the sensor location data and writes it into the `testLocation` collection in database `impExplorer` using the API call `insertOne()`. Data format transformations from device/agent formats into database formats are applied: the sensorTimestamp is converted into a ISO date format (UTC timezone), the location into a GeoJSON object.
 
 ## MongoDB Atlas
 
